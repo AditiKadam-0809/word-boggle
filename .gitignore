@@ -1,0 +1,17 @@
+# Binaries and object files
+*.exe
+*.o
+*.obj
+*.out
+*.dll
+*.so
+
+# Build directories
+build/
+bin/
+.vscode/
+.idea/
+
+# OS generated
+.DS_Store
+Thumbs.db

@@ -1,149 +1,354 @@
 #include "../include/Game.h"
-#include <cctype>
+#include <random>
 #include <algorithm>
+#include <iostream>
+#include <cctype>
 
-Game::Game() : totalScore(0) {}
+// Standard Boggle 16 dice (4x4)
+static const std::vector<std::string> DICE_4X4 = {
+    "AAEEGN", "ABBJOO", "ACHOPS", "AFFKPS",
+    "AOOTTW", "CIMOTU", "DEILRX", "DELRVY",
+    "DISTTY", "EEGHNW", "EEINSU", "EHRTVW",
+    "EIOSST", "ELRTTY", "HIMNUQ", "HLNNRZ"
+};
 
-std::string Game::normalizeWord(const std::string& str) {
-    if (str.empty()) return "";
+// Standard 3x3 dice subset
+static const std::vector<std::string> DICE_3X3 = {
+    "AAEEGN", "ABBJOO", "ACHOPS",
+    "AOOTTW", "CIMOTU", "DEILRX",
+    "DISTTY", "EEINSU", "HLNNRZ"
+};
 
-    // Find start and end to trim whitespace
-    size_t start = 0;
-    while (start < str.size() && std::isspace(static_cast<unsigned char>(str[start]))) {
-        ++start;
-    }
+// Big Boggle 25 dice (5x5)
+static const std::vector<std::string> DICE_5X5 = {
+    "AAAFRS", "AAEEEE", "AAFIRS", "ADENNN", "AEEEEM",
+    "AEEGMU", "AEGMNN", "AFIRSY", "BJKQXZ", "CCNSTW",
+    "CEIILT", "CEILPT", "CEIPST", "DHHNOT", "DHHLOR",
+    "DHLNOR", "DDLNOR", "EIIITT", "EMOTTT", "ENSSSU",
+    "FIPRSY", "GORRVW", "HIPRRY", "NOOTUW", "OOOTTU"
+};
 
-    if (start >= str.size()) return "";
-
-    size_t end = str.size() - 1;
-    while (end > start && std::isspace(static_cast<unsigned char>(str[end]))) {
-        --end;
-    }
-
-    std::string result;
-    result.reserve(end - start + 1);
-    for (size_t i = start; i <= end; ++i) {
-        result.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(str[i]))));
-    }
-    return result;
+Game::Game() : boardSize(4), difficulty(Difficulty::MEDIUM), score(0) {
+    graph.build(4);
+    totalCountsByLength.assign(17, 0);
+    foundCountsByLength.assign(17, 0);
 }
 
-void Game::reset() {
-    wordMap.clear();
-    avlTree.clear();
-    foundWordsList.clear();
-    totalScore = 0;
+Game::Game(const std::string& dictionaryPath) : boardSize(4), difficulty(Difficulty::MEDIUM), score(0) {
+    graph.build(4);
+    totalCountsByLength.assign(17, 0);
+    foundCountsByLength.assign(17, 0);
+    loadDictionary(dictionaryPath);
 }
 
-void Game::setValidWords(const std::vector<std::string>& words) {
-    reset();
+bool Game::loadDictionary(const std::string& path) {
+    return dictionary.loadFromFile(path);
+}
 
-    for (const auto& w : words) {
-        std::string clean = normalizeWord(w);
-        if (clean.length() < 3) continue;
+const Trie& Game::getDictionary() const {
+    return dictionary;
+}
 
-        // Prevent duplicate entries
-        if (wordMap.find(clean) == wordMap.end()) {
-            int pts = calculatePoints(clean);
-            wordMap[clean] = WordInfo(clean, pts, false);
-            avlTree.insert(clean);
+std::vector<char> Game::generateDiceBoard(int size) {
+    const std::vector<std::string>* diceSet = &DICE_4X4;
+    if (size == 3) {
+        diceSet = &DICE_3X3;
+    } else if (size == 5) {
+        diceSet = &DICE_5X5;
+    }
+
+    std::vector<std::string> shuffledDice = *diceSet;
+
+    // Random engine
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(shuffledDice.begin(), shuffledDice.end(), g);
+
+    std::uniform_int_distribution<int> faceDist(0, 5);
+    std::vector<char> boardLetters;
+    boardLetters.reserve(size * size);
+
+    for (int i = 0; i < size * size; ++i) {
+        int face = faceDist(g);
+        boardLetters.push_back(shuffledDice[i][face]);
+    }
+
+    return boardLetters;
+}
+
+void Game::solveDFS(
+    int currentIndex,
+    std::string& currentWord,
+    std::vector<int>& currentPath,
+    std::vector<bool>& visited,
+    const std::vector<char>& boardGrid,
+    const Graph& boardGraph,
+    const Trie& trie,
+    std::unordered_map<std::string, WordInfo>& outWords
+) {
+    visited[currentIndex] = true;
+    currentWord.push_back(boardGrid[currentIndex]);
+    currentPath.push_back(currentIndex);
+
+    // Prefix Pruning: if current word prefix does not exist in Trie, backtrack immediately
+    if (!trie.findPrefix(currentWord)) {
+        visited[currentIndex] = false;
+        currentWord.pop_back();
+        currentPath.pop_back();
+        return;
+    }
+
+    // Check if the current path forms a valid word of length >= 3
+    if (currentWord.length() >= 3 && trie.search(currentWord)) {
+        if (outWords.find(currentWord) == outWords.end()) {
+            outWords[currentWord] = WordInfo(currentPath, false);
         }
     }
+
+    // Explore 8-directional neighbors via Person B's Graph
+    const auto& neighbors = boardGraph.getNeighbors(currentIndex);
+    for (int nextIndex : neighbors) {
+        if (!visited[nextIndex]) {
+            solveDFS(nextIndex, currentWord, currentPath, visited, boardGrid, boardGraph, trie, outWords);
+        }
+    }
+
+    // Backtrack
+    visited[currentIndex] = false;
+    currentWord.pop_back();
+    currentPath.pop_back();
 }
 
-int Game::calculatePoints(const std::string& word) {
-    size_t len = word.length();
-    if (len < 3) return 0;
-    if (len == 3 || len == 4) return 1;
-    if (len == 5) return 2;
-    if (len == 6) return 3;
-    if (len == 7) return 5;
+std::unordered_map<std::string, WordInfo> Game::solveBoard(
+    const std::vector<char>& boardGrid,
+    int size,
+    const Trie& trie,
+    const Graph& boardGraph
+) {
+    std::unordered_map<std::string, WordInfo> solvedWords;
+    int total = size * size;
+    std::vector<bool> visited(total, false);
+    std::string currentWord;
+    std::vector<int> currentPath;
+
+    for (int i = 0; i < total; ++i) {
+        solveDFS(i, currentWord, currentPath, visited, boardGrid, boardGraph, trie, solvedWords);
+    }
+
+    return solvedWords;
+}
+
+std::pair<int, int> Game::getDifficultyRange(Difficulty diff, int size) {
+    if (size == 3) {
+        switch (diff) {
+            case Difficulty::EASY:    return {10, 30};
+            case Difficulty::MEDIUM:  return {31, 60};
+            case Difficulty::HARD:    return {61, 95};
+            case Difficulty::EXTREME: return {96, 200};
+        }
+    } else if (size == 5) {
+        switch (diff) {
+            case Difficulty::EASY:    return {40, 90};
+            case Difficulty::MEDIUM:  return {91, 170};
+            case Difficulty::HARD:    return {171, 280};
+            case Difficulty::EXTREME: return {281, 600};
+        }
+    }
+
+    // Default 4x4
+    switch (diff) {
+        case Difficulty::EASY:    return {25, 55};
+        case Difficulty::MEDIUM:  return {56, 110};
+        case Difficulty::HARD:    return {111, 180};
+        case Difficulty::EXTREME: return {181, 400};
+    }
+    return {30, 100};
+}
+
+std::vector<char> Game::generateBoardForDifficulty(
+    int size,
+    Difficulty diff,
+    const Trie& trie,
+    const Graph& boardGraph,
+    std::unordered_map<std::string, WordInfo>& outSolvedWords
+) {
+    auto [minWords, maxWords] = getDifficultyRange(diff, size);
+
+    std::vector<char> bestBoard;
+    std::unordered_map<std::string, WordInfo> bestWords;
+    int bestDiff = 999999;
+
+    const int MAX_ATTEMPTS = 60;
+    for (int attempt = 0; attempt < MAX_ATTEMPTS; ++attempt) {
+        std::vector<char> candidate = generateDiceBoard(size);
+        auto solved = solveBoard(candidate, size, trie, boardGraph);
+        int count = static_cast<int>(solved.size());
+
+        if (count >= minWords && count <= maxWords) {
+            outSolvedWords = std::move(solved);
+            return candidate;
+        }
+
+        // Track closest board to range midpoint in case target range isn't reached
+        int targetMid = (minWords + maxWords) / 2;
+        int distance = std::abs(count - targetMid);
+        if (distance < bestDiff) {
+            bestDiff = distance;
+            bestBoard = candidate;
+            bestWords = std::move(solved);
+        }
+    }
+
+    outSolvedWords = std::move(bestWords);
+    return bestBoard;
+}
+
+Difficulty Game::parseDifficulty(const std::string& diffStr) {
+    std::string s = diffStr;
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
+    if (s == "easy") return Difficulty::EASY;
+    if (s == "hard") return Difficulty::HARD;
+    if (s == "extreme") return Difficulty::EXTREME;
+    return Difficulty::MEDIUM;
+}
+
+std::string Game::difficultyToString(Difficulty diff) {
+    switch (diff) {
+        case Difficulty::EASY: return "easy";
+        case Difficulty::MEDIUM: return "medium";
+        case Difficulty::HARD: return "hard";
+        case Difficulty::EXTREME: return "extreme";
+    }
+    return "medium";
+}
+
+bool Game::startNewGame(int size, Difficulty diff) {
+    if (size != 3 && size != 4 && size != 5) {
+        size = 4;
+    }
+
+    boardSize = size;
+    difficulty = diff;
+    graph.build(boardSize);
+    score = 0;
+    submittedWords.clear();
+    foundWordsOrder.clear();
+
+    totalCountsByLength.assign(boardSize * boardSize + 1, 0);
+    foundCountsByLength.assign(boardSize * boardSize + 1, 0);
+
+    board = generateBoardForDifficulty(boardSize, difficulty, dictionary, graph, validWords);
+
+    // Populate total counts by length
+    for (const auto& kv : validWords) {
+        size_t len = kv.first.length();
+        if (len < totalCountsByLength.size()) {
+            totalCountsByLength[len]++;
+        }
+    }
+
+    return true;
+}
+
+int Game::getBoardSize() const {
+    return boardSize;
+}
+
+Difficulty Game::getDifficulty() const {
+    return difficulty;
+}
+
+const std::vector<char>& Game::getBoard() const {
+    return board;
+}
+
+std::string Game::getBoardString() const {
+    return std::string(board.begin(), board.end());
+}
+
+const std::unordered_map<std::string, WordInfo>& Game::getValidWords() const {
+    return validWords;
+}
+
+int Game::getTotalValidWordCount() const {
+    return static_cast<int>(validWords.size());
+}
+
+const std::vector<int>& Game::getTotalCountsByLength() const {
+    return totalCountsByLength;
+}
+
+const std::vector<int>& Game::getFoundCountsByLength() const {
+    return foundCountsByLength;
+}
+
+int Game::getScore() const {
+    return score;
+}
+
+int Game::calculateScore(int wordLength) {
+    if (wordLength <= 2) return 0;
+    if (wordLength <= 4) return 1;
+    if (wordLength == 5) return 2;
+    if (wordLength == 6) return 3;
+    if (wordLength == 7) return 5;
     return 11; // 8 or more letters
 }
 
-SubmitResponse Game::submitWord(const std::string& rawWord) {
-    std::string clean = normalizeWord(rawWord);
+Game::SubmitResult Game::submitWord(const std::string& rawWord) {
+    std::string clean = rawWord;
+    std::transform(clean.begin(), clean.end(), clean.begin(), [](unsigned char c) { return std::toupper(c); });
 
-    if (clean.empty() || clean.length() < 3) {
-        return {SubmitStatus::INVALID, clean, 0, totalScore, "Word must be at least 3 letters long"};
+    SubmitResult res;
+    res.isValid = false;
+    res.isDuplicate = false;
+    res.wordScore = 0;
+
+    if (submittedWords.find(clean) != submittedWords.end()) {
+        res.isDuplicate = true;
+        auto it = validWords.find(clean);
+        if (it != validWords.end()) {
+            res.isValid = true;
+            res.path = it->second.path;
+        }
+        return res;
     }
 
-    auto it = wordMap.find(clean);
-    if (it == wordMap.end()) {
-        return {SubmitStatus::INVALID, clean, 0, totalScore, "Not a valid word on this board"};
-    }
+    auto it = validWords.find(clean);
+    if (it != validWords.end()) {
+        res.isValid = true;
+        res.path = it->second.path;
+        res.wordScore = calculateScore(static_cast<int>(clean.length()));
 
-    if (it->second.isFound) {
-        return {SubmitStatus::DUPLICATE, clean, 0, totalScore, "Word already found"};
-    }
+        submittedWords.insert(clean);
+        foundWordsOrder.push_back(clean);
+        it->second.found = true;
+        score += res.wordScore;
 
-    // First time finding this valid word
-    it->second.isFound = true;
-    totalScore += it->second.points;
-    foundWordsList.push_back(clean);
-
-    return {SubmitStatus::VALID, clean, it->second.points, totalScore, "Word found!"};
-}
-
-std::map<int, std::pair<int, int>> Game::getWordCountsByLength() const {
-    // Categories: 3, 4, 5, 6, 7, 8 (where 8 represents 8+)
-    std::map<int, std::pair<int, int>> counts;
-    for (int len = 3; len <= 8; ++len) {
-        counts[len] = {0, 0};
-    }
-
-    for (const auto& pair : wordMap) {
-        int len = static_cast<int>(pair.first.length());
-        int bucket = (len >= 8) ? 8 : len;
-
-        if (bucket >= 3) {
-            counts[bucket].second++; // Total count
-            if (pair.second.isFound) {
-                counts[bucket].first++; // Found count
-            }
+        size_t len = clean.length();
+        if (len < foundCountsByLength.size()) {
+            foundCountsByLength[len]++;
         }
     }
 
-    return counts;
+    return res;
 }
 
-std::vector<EndGameWord> Game::getEndGameSortedWordList() const {
-    // 1. Retrieve all words in alphabetical order from AVL Tree in-order traversal
-    std::vector<std::string> sortedWords = avlTree.inOrderTraversal();
+std::vector<std::pair<std::string, bool>> Game::getEndGameWords() const {
+    AVLTree avl;
+    for (const auto& kv : validWords) {
+        avl.insert(kv.first);
+    }
 
-    std::vector<EndGameWord> result;
+    std::vector<std::string> sortedWords = avl.inOrderTraversal();
+    std::vector<std::pair<std::string, bool>> result;
     result.reserve(sortedWords.size());
 
-    // 2. Fetch point values and found status from wordMap
     for (const auto& w : sortedWords) {
-        auto it = wordMap.find(w);
-        if (it != wordMap.end()) {
-            result.push_back({w, it->second.points, it->second.isFound});
-        }
+        auto it = validWords.find(w);
+        bool isFound = (it != validWords.end()) ? it->second.found : false;
+        result.emplace_back(w, isFound);
     }
 
     return result;
 }
-
-int Game::getTotalScore() const {
-    return totalScore;
-}
-
-int Game::getFoundCount() const {
-    return static_cast<int>(foundWordsList.size());
-}
-
-int Game::getTotalCount() const {
-    return static_cast<int>(wordMap.size());
-}
-
-const std::vector<std::string>& Game::getFoundWords() const {
-    return foundWordsList;
-}
-
-bool Game::isWordFound(const std::string& word) const {
-    std::string clean = normalizeWord(word);
-    auto it = wordMap.find(clean);
-    return (it != wordMap.end() && it->second.isFound);
-}
-

@@ -659,3 +659,48 @@ h2 {
   }
 }
 
+
+
+/* ============================================================ */
+/* PERSON A: 3D HOVER, PATH STEP BADGES & SHAKE ANIMATIONS       */
+/* ============================================================ */
+.tile:hover:not(.selected) {
+  transform: translateY(-3px);
+  box-shadow: 0 7px 0 var(--tile-shadow), 0 8px 12px rgba(0,0,0,0.1);
+  background: #ffffff;
+}
+
+.tile .path-step-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--accent-orange);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+  pointer-events: none;
+  animation: badgePop 0.15s ease-out;
+}
+
+@keyframes badgePop {
+  0% { transform: scale(0); }
+  80% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shakeInput {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.shake {
+  animation: shakeInput 0.35s ease;
+}

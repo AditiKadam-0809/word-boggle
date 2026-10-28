@@ -2,6 +2,7 @@
 #include <cctype>
 #include <algorithm>
 #include <random>
+#include <chrono>
 #include <iostream>
 
 // Standard Boggle 16 dice (4x4)
@@ -85,8 +86,10 @@ std::vector<char> Game::generateDiceBoard(int size) {
 
     std::vector<std::string> shuffledDice = *diceSet;
 
-    std::random_device rd;
-    std::mt19937 g(rd());
+    // Use high-resolution time to avoid MinGW std::random_device deterministic seed bug
+    static std::mt19937 g(static_cast<unsigned int>(
+        std::chrono::high_resolution_clock::now().time_since_epoch().count()
+    ));
     std::shuffle(shuffledDice.begin(), shuffledDice.end(), g);
 
     std::uniform_int_distribution<int> faceDist(0, 5);
@@ -165,30 +168,38 @@ std::unordered_map<std::string, WordInfo> Game::solveBoard(
     return solvedWords;
 }
 
+// Calibrated 3 Difficulty Levels: Easy, Medium, Hard
 std::pair<int, int> Game::getDifficultyRange(Difficulty diff, int size) {
     if (size == 3) {
         switch (diff) {
-            case Difficulty::EASY:    return {10, 30};
-            case Difficulty::MEDIUM:  return {31, 60};
-            case Difficulty::HARD:    return {61, 95};
-            case Difficulty::EXTREME: return {96, 200};
+            case Difficulty::EASY:   return {35, 60}; // Rich 3x3 board
+            case Difficulty::MEDIUM: return {25, 34}; // Balanced
+            case Difficulty::HARD:   return {12, 24}; // Tricky/sparse
         }
     } else if (size == 5) {
         switch (diff) {
-            case Difficulty::EASY:    return {40, 90};
-            case Difficulty::MEDIUM:  return {91, 170};
-            case Difficulty::HARD:    return {171, 280};
-            case Difficulty::EXTREME: return {281, 600};
+            case Difficulty::EASY:   return {200, 350}; // Rich 5x5 board
+            case Difficulty::MEDIUM: return {130, 199}; // Balanced
+            case Difficulty::HARD:   return {80, 129};  // Tough
         }
     }
 
+    // 4x4 Classic Board (Exact puzzle-boggle.com distribution)
     switch (diff) {
-        case Difficulty::EASY:    return {25, 55};
-        case Difficulty::MEDIUM:  return {56, 110};
-        case Difficulty::HARD:    return {111, 180};
-        case Difficulty::EXTREME: return {181, 400};
+        case Difficulty::EASY:   return {75, 120}; // Avg ~77 words
+        case Difficulty::MEDIUM: return {65, 74};  // Avg ~70 words
+        case Difficulty::HARD:   return {45, 64};  // Classic challenge (~55-68 words)
     }
-    return {30, 100};
+    return {60, 90};
+}
+
+int Game::getTimerSeconds(Difficulty diff) {
+    switch (diff) {
+        case Difficulty::EASY:   return 300; // 5 minutes
+        case Difficulty::MEDIUM: return 240; // 4 minutes
+        case Difficulty::HARD:   return 180; // 3 minutes (classic Boggle timer)
+    }
+    return 180;
 }
 
 std::vector<char> Game::generateBoardForDifficulty(
@@ -198,13 +209,15 @@ std::vector<char> Game::generateBoardForDifficulty(
     const Graph& graph,
     std::unordered_map<std::string, WordInfo>& outSolvedWords
 ) {
-    auto [minWords, maxWords] = getDifficultyRange(diff, size);
+    auto range = getDifficultyRange(diff, size);
+    int minWords = range.first;
+    int maxWords = range.second;
 
     std::vector<char> bestBoard;
     std::unordered_map<std::string, WordInfo> bestWords;
     int bestDiff = 999999;
 
-    const int MAX_ATTEMPTS = 60;
+    const int MAX_ATTEMPTS = 100;
     for (int attempt = 0; attempt < MAX_ATTEMPTS; ++attempt) {
         std::vector<char> candidate = generateDiceBoard(size);
         auto solved = solveBoard(candidate, size, trie, graph);
@@ -232,16 +245,14 @@ Difficulty Game::parseDifficulty(const std::string& diffStr) {
     std::string s = normalizeWord(diffStr);
     if (s == "easy") return Difficulty::EASY;
     if (s == "hard") return Difficulty::HARD;
-    if (s == "extreme") return Difficulty::EXTREME;
     return Difficulty::MEDIUM;
 }
 
 std::string Game::difficultyToString(Difficulty diff) {
     switch (diff) {
-        case Difficulty::EASY: return "easy";
+        case Difficulty::EASY:   return "easy";
         case Difficulty::MEDIUM: return "medium";
-        case Difficulty::HARD: return "hard";
-        case Difficulty::EXTREME: return "extreme";
+        case Difficulty::HARD:   return "hard";
     }
     return "medium";
 }

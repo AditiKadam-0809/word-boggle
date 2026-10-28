@@ -7,24 +7,24 @@
 #include <random>
 #include <algorithm>
 #include <cctype>
+#include <chrono>
+#include <iomanip>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
 #include "../include/Graph.h"
 #include "../include/AVL.h"
+#include "../include/Trie.h"
 #include "../include/Game.h"
 
 // Global game instance
 static Game g_game;
-static std::vector<std::string> g_currentBoard;
-static int g_currentSize = 4;
 
 // Simple JSON extraction helpers
 std::string extractJsonString(const std::string& json, const std::string& key) {
     std::string pattern = "\"" + key + "\"";
     size_t pos = json.find(pattern);
     if (pos == std::string::npos) {
-        // Try without quotes on key
         pattern = key + ":";
         pos = json.find(pattern);
         if (pos == std::string::npos) return "";
@@ -73,27 +73,43 @@ int extractJsonInt(const std::string& json, const std::string& key, int defaultV
     return defaultVal;
 }
 
-// Standard Boggle dice distribution
-std::vector<std::string> generateBoard(int size) {
-    static const std::string dice4x4[16] = {
-        "RIFOBX", "IFEHEY", "DENOWS", "UTOKND",
-        "HMSRAO", "LUPETS", "ACITOA", "YLGKUE",
-        "QBMJOA", "EHISPN", "VETIGN", "BALIYT",
-        "EZAVND", "RALESC", "UWILRG", "PACEMD"
-    };
+// Pretty print the board grid to the console
+void printBoardGrid(int size, const std::vector<char>& board) {
+    std::cout << "\n+";
+    for (int c = 0; c < size; ++c) std::cout << "---+";
+    std::cout << "\n";
 
-    static std::mt19937 rng(42);
-    std::vector<std::string> board;
-    int totalCells = size * size;
+    for (int r = 0; r < size; ++r) {
+        std::cout << "|";
+        for (int c = 0; c < size; ++c) {
+            std::cout << " " << board[r * size + c] << " |";
+        }
+        std::cout << "\n+";
+        for (int c = 0; c < size; ++c) std::cout << "---+";
+        std::cout << "\n";
+    }
+}
 
-    for (int i = 0; i < totalCells; ++i) {
-        const std::string& die = dice4x4[i % 16];
-        char ch = die[rng() % die.size()];
-        board.push_back(std::string(1, ch));
+// Pretty print board summary with valid words
+void printBoardSummary(const Game& game) {
+    printBoardGrid(game.getBoardSize(), game.getBoard());
+    std::cout << "[Board] Total valid words found: " << game.getTotalCount() << "\n";
+    std::cout << "[Board] Word count breakdown by length:\n";
+    auto counts = game.getWordCountsByLength();
+    for (const auto& kv : counts) {
+        std::cout << "  " << kv.first << (kv.first == 8 ? "+ letters: " : " letters:  ")
+                  << kv.second.second << " words\n";
     }
 
-    std::shuffle(board.begin(), board.end(), rng);
-    return board;
+    std::cout << "\n[Board] Sample valid words (in AVL alphabetical order):\n  ";
+    auto sorted = game.getEndGameSortedWordList();
+    int shown = 0;
+    for (const auto& w : sorted) {
+        std::cout << w.word << " ";
+        if (++shown >= 25) break;
+    }
+    if (sorted.size() > 25) std::cout << "... (" << sorted.size() - 25 << " more)";
+    std::cout << "\n\n";
 }
 
 // Build counts JSON: {"3": [found, total], "4": [found, total], ...}
@@ -168,28 +184,27 @@ std::string handleRequest(const std::string& method, const std::string& path, co
     if (path == "/api/new" && method == "POST") {
         int size = extractJsonInt(body, "size", 4);
         if (size < 3 || size > 5) size = 4;
-        std::string difficulty = extractJsonString(body, "difficulty");
-        if (difficulty.empty()) difficulty = "medium";
+        std::string diffStr = extractJsonString(body, "difficulty");
+        if (diffStr.empty()) diffStr = "medium";
 
-        g_currentSize = size;
-        g_currentBoard = generateBoard(size);
+        Difficulty diff = Game::parseDifficulty(diffStr);
 
-        std::vector<std::string> validWords = {
-            "cat", "cats", "care", "cars", "cart", "cater", "rate", "rats", "rose",
-            "star", "stare", "start", "seat", "sate", "east", "eats", "eater", "rest",
-            "team", "time", "tine", "site", "side", "line", "lion", "pine", "send",
-            "sand", "band", "bland", "blend", "bend", "bone", "cone", "tone", "note",
-            "boat", "coat", "goat", "float", "flat", "plat", "plot", "slot", "spot",
-            "stop", "post", "host", "most", "cost", "lost", "frost", "forest", "boggling"
-        };
+        auto solveStart = std::chrono::high_resolution_clock::now();
+        g_game.startNewGame(size, diff);
+        auto solveEnd = std::chrono::high_resolution_clock::now();
+        double solveMs = std::chrono::duration<double, std::milli>(solveEnd - solveStart).count();
 
-        g_game.setValidWords(validWords);
+        std::cout << "[Game Generated] " << size << "x" << size << " (" << diffStr
+                  << ") solved in " << std::fixed << std::setprecision(2) << solveMs << " ms";
+        printBoardSummary(g_game);
 
+        // Format board letters as JSON array
+        const auto& letters = g_game.getBoard();
         std::ostringstream boardJson;
         boardJson << "[";
-        for (size_t i = 0; i < g_currentBoard.size(); ++i) {
+        for (size_t i = 0; i < letters.size(); ++i) {
             if (i > 0) boardJson << ",";
-            boardJson << "\"" << g_currentBoard[i] << "\"";
+            boardJson << "\"" << letters[i] << "\"";
         }
         boardJson << "]";
 
@@ -198,10 +213,12 @@ std::string handleRequest(const std::string& method, const std::string& path, co
         std::ostringstream resp;
         resp << "{"
              << "\"board\":" << boardJson.str() << ","
-             << "\"size\":" << g_currentSize << ","
-             << "\"difficulty\":\"" << difficulty << "\","
+             << "\"size\":" << g_game.getBoardSize() << ","
+             << "\"difficulty\":\"" << Game::difficultyToString(diff) << "\","
+             << "\"timerSeconds\":" << Game::getTimerSeconds(diff) << ","
              << "\"counts\":" << countsJson << ","
-             << "\"totalWords\":" << g_game.getTotalCount()
+             << "\"totalWords\":" << g_game.getTotalCount() << ","
+             << "\"solveTimeMs\":" << solveMs
              << "}";
 
         return createHttpResponse(200, "application/json", resp.str());
@@ -221,6 +238,14 @@ std::string handleRequest(const std::string& method, const std::string& path, co
 
         std::string countsJson = buildCountsJson(g_game.getWordCountsByLength());
 
+        std::ostringstream pathJson;
+        pathJson << "[";
+        for (size_t i = 0; i < res.path.size(); ++i) {
+            if (i > 0) pathJson << ",";
+            pathJson << res.path[i];
+        }
+        pathJson << "]";
+
         std::ostringstream resp;
         resp << "{"
              << "\"status\":\"" << statusStr << "\","
@@ -229,6 +254,7 @@ std::string handleRequest(const std::string& method, const std::string& path, co
              << "\"totalScore\":" << res.totalScore << ","
              << "\"foundCount\":" << g_game.getFoundCount() << ","
              << "\"counts\":" << countsJson << ","
+             << "\"path\":" << pathJson.str() << ","
              << "\"message\":\"" << res.message << "\""
              << "}";
 
@@ -271,10 +297,48 @@ std::string handleRequest(const std::string& method, const std::string& path, co
     return createHttpResponse(404, "text/plain", "404 Not Found");
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     std::cout << "========================================" << std::endl;
     std::cout << "     WORD BOGGLE C++ BACKEND SERVER     " << std::endl;
     std::cout << "========================================" << std::endl;
+
+    // Load tournament dictionary with high-precision time measurement
+    std::cout << "[Server] Loading dictionary words..." << std::endl;
+    auto tStart = std::chrono::high_resolution_clock::now();
+    bool loaded = g_game.loadDictionary("data/words.txt");
+    if (!loaded) loaded = g_game.loadDictionary("../data/words.txt");
+    auto tEnd = std::chrono::high_resolution_clock::now();
+    double loadMs = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+
+    if (loaded) {
+        std::cout << "[Server] Dictionary loaded in " << std::fixed << std::setprecision(2)
+                  << loadMs << " ms (" << g_game.getDictionary().getWordCount()
+                  << " words in Trie)." << std::endl;
+    } else {
+        std::cerr << "[Server] WARNING: Could not find data/words.txt!" << std::endl;
+    }
+
+    // Quick CLI test mode: if run with --cli or --test
+    // e.g. .\boggle_server.exe --cli 4 hard
+    if (argc > 1 && (std::string(argv[1]) == "--cli" || std::string(argv[1]) == "--test")) {
+        int size = (argc > 2) ? std::atoi(argv[2]) : 4;
+        std::string diffStr = (argc > 3) ? argv[3] : "hard";
+        Difficulty diff = Game::parseDifficulty(diffStr);
+        int timerSecs = Game::getTimerSeconds(diff);
+
+        std::cout << "\n[CLI Test] Mode: " << diffStr << " (" << size << "x" << size << ") | Timer: "
+                  << timerSecs / 60 << " min (" << timerSecs << "s)\n";
+
+        auto solveStart = std::chrono::high_resolution_clock::now();
+        g_game.startNewGame(size, diff);
+        auto solveEnd = std::chrono::high_resolution_clock::now();
+        double solveMs = std::chrono::duration<double, std::milli>(solveEnd - solveStart).count();
+
+        std::cout << "[CLI Test] Board generated and solved in " << std::fixed << std::setprecision(2)
+                  << solveMs << " ms!\n";
+        printBoardSummary(g_game);
+        return 0;
+    }
 
     WSADATA wsaData;
     int wsaRes = WSAStartup(MAKEWORD(2, 2), &wsaData);

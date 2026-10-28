@@ -46,12 +46,11 @@ struct EndGameWord {
     bool isFound;
 };
 
-// Supported difficulty levels
+// Supported difficulty levels: Easy, Medium, Hard
 enum class Difficulty {
     EASY,
     MEDIUM,
-    HARD,
-    EXTREME
+    HARD
 };
 
 // Game engine managing board generation, solver, score, counts, and player submissions
@@ -118,6 +117,10 @@ public:
     // Helper conversions for difficulty
     static Difficulty parseDifficulty(const std::string& diffStr);
     static std::string difficultyToString(Difficulty diff);
+
+    // Timer duration in seconds based on difficulty:
+    // Easy: 5 min (300s), Medium: 4 min (240s), Hard: 3 min (180s - classic)
+    static int getTimerSeconds(Difficulty diff);
 
     // Initialize/start a new game with specified size (3, 4, 5) and difficulty
     bool startNewGame(int size, Difficulty diff);

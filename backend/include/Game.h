@@ -119,7 +119,7 @@ public:
     static std::string difficultyToString(Difficulty diff);
 
     // Timer duration in seconds based on difficulty:
-    // Easy: 5 min (300s), Medium: 4 min (240s), Hard: 3 min (180s - classic)
+    // Easy: 5 min (300s), Medium: 3 min (180s - classic), Hard: 2 min (120s)
     static int getTimerSeconds(Difficulty diff);
 
     // Initialize/start a new game with specified size (3, 4, 5) and difficulty

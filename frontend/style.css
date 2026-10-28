@@ -268,6 +268,12 @@ h2 {
   color: var(--text-dark);
 }
 
+.level-box .hud-value {
+  color: var(--primary-teal);
+  font-size: 16px;
+  text-transform: capitalize;
+}
+
 .timer-box .hud-value {
   color: var(--accent-orange);
   font-family: monospace;

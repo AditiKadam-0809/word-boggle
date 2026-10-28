@@ -168,27 +168,27 @@ std::unordered_map<std::string, WordInfo> Game::solveBoard(
     return solvedWords;
 }
 
-// Calibrated 3 Difficulty Levels: Easy, Medium, Hard
+// Calibrated 3 Difficulty Levels: Easy, Medium, Hard (aligned with puzzle-boggle stats)
 std::pair<int, int> Game::getDifficultyRange(Difficulty diff, int size) {
     if (size == 3) {
         switch (diff) {
             case Difficulty::EASY:   return {35, 60}; // Rich 3x3 board
-            case Difficulty::MEDIUM: return {25, 34}; // Balanced
-            case Difficulty::HARD:   return {12, 24}; // Tricky/sparse
+            case Difficulty::MEDIUM: return {22, 34}; // Balanced (~28 words)
+            case Difficulty::HARD:   return {10, 21}; // Tricky/sparse (~16 words)
         }
     } else if (size == 5) {
         switch (diff) {
             case Difficulty::EASY:   return {200, 350}; // Rich 5x5 board
-            case Difficulty::MEDIUM: return {130, 199}; // Balanced
-            case Difficulty::HARD:   return {80, 129};  // Tough
+            case Difficulty::MEDIUM: return {130, 199}; // Balanced (~165 words)
+            case Difficulty::HARD:   return {70, 129};  // Tough (~95 words)
         }
     }
 
     // 4x4 Classic Board (Exact puzzle-boggle.com distribution)
     switch (diff) {
-        case Difficulty::EASY:   return {75, 120}; // Avg ~77 words
-        case Difficulty::MEDIUM: return {65, 74};  // Avg ~70 words
-        case Difficulty::HARD:   return {45, 64};  // Classic challenge (~55-68 words)
+        case Difficulty::EASY:   return {75, 120}; // Avg ~77 words (up to 194)
+        case Difficulty::MEDIUM: return {60, 74};  // Avg ~68 words (Hard classic in table)
+        case Difficulty::HARD:   return {40, 59};  // Avg ~49 words (Extreme in table)
     }
     return {60, 90};
 }
@@ -196,8 +196,8 @@ std::pair<int, int> Game::getDifficultyRange(Difficulty diff, int size) {
 int Game::getTimerSeconds(Difficulty diff) {
     switch (diff) {
         case Difficulty::EASY:   return 300; // 5 minutes
-        case Difficulty::MEDIUM: return 240; // 4 minutes
-        case Difficulty::HARD:   return 180; // 3 minutes (classic Boggle timer)
+        case Difficulty::MEDIUM: return 180; // 3 minutes (classic Boggle timer)
+        case Difficulty::HARD:   return 120; // 2 minutes (extreme / rapid timer)
     }
     return 180;
 }

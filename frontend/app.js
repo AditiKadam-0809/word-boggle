@@ -21,8 +21,8 @@ const state = {
   difficulty: 'medium',
   size: 4,
   board: [],
-  timerSeconds: 240,
-  timeRemaining: 240,
+  timerSeconds: 180,
+  timeRemaining: 180,
   timerInterval: null,
   totalScore: 0,
   foundCount: 0,
@@ -173,6 +173,11 @@ function updateTimerDisplay() {
 }
 
 function updateHUD() {
+  const diffCap = state.difficulty.charAt(0).toUpperCase() + state.difficulty.slice(1);
+  const levelEl = $('hud-level');
+  if (levelEl) {
+    levelEl.textContent = `${diffCap} (${state.size}×${state.size})`;
+  }
   $('hud-score').textContent = state.totalScore;
   $('hud-words').textContent = `${state.foundCount} / ${state.totalWords}`;
 }
@@ -339,10 +344,6 @@ function updatePathHighlights() {
 
     if (pos !== -1) {
       t.classList.add("selected");
-      const badge = document.createElement("span");
-      badge.className = "path-step-badge";
-      badge.textContent = pos + 1;
-      t.appendChild(badge);
     } else {
       t.classList.remove("selected", "path-active");
     }
@@ -438,10 +439,10 @@ async function submitWord(word) {
       }
 
     } else if (data.status === 'DUPLICATE') {
-      showFeedback("Already found "${data.word.toUpperCase()}"", 'duplicate');
+      showFeedback(`Already found "${data.word.toUpperCase()}"`, 'duplicate');
       shakeInput();
     } else {
-      showFeedback("${data.word.toUpperCase()}" is not on this board", 'invalid');
+      showFeedback(`"${data.word.toUpperCase()}" is not on this board`, 'invalid');
       shakeInput();
     }
 

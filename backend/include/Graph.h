@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <utility>
-#include <stdexcept>
 
 // Graph representation for an N x N Boggle board.
 // Each cell on the grid is connected to up to 8 adjacent neighbors

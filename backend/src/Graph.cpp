@@ -1,4 +1,5 @@
 #include "../include/Graph.h"
+#include <stdexcept>
 
 Graph::Graph() : size(0), totalCells(0) {}
 

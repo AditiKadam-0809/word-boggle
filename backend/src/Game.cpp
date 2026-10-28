@@ -65,16 +65,16 @@ SubmitResponse Game::submitWord(const std::string& rawWord) {
     std::string clean = normalizeWord(rawWord);
 
     if (clean.empty() || clean.length() < 3) {
-        return {SubmitStatus::INVALID, clean, 0, totalScore, "Word must be at least 3 letters long"};
+        return {SubmitStatus::WORD_INVALID, clean, 0, totalScore, "Word must be at least 3 letters long"};
     }
 
     auto it = wordMap.find(clean);
     if (it == wordMap.end()) {
-        return {SubmitStatus::INVALID, clean, 0, totalScore, "Not a valid word on this board"};
+        return {SubmitStatus::WORD_INVALID, clean, 0, totalScore, "Not a valid word on this board"};
     }
 
     if (it->second.isFound) {
-        return {SubmitStatus::DUPLICATE, clean, 0, totalScore, "Word already found"};
+        return {SubmitStatus::WORD_DUPLICATE, clean, 0, totalScore, "Word already found"};
     }
 
     // First time finding this valid word
@@ -82,7 +82,7 @@ SubmitResponse Game::submitWord(const std::string& rawWord) {
     totalScore += it->second.points;
     foundWordsList.push_back(clean);
 
-    return {SubmitStatus::VALID, clean, it->second.points, totalScore, "Word found!"};
+    return {SubmitStatus::WORD_VALID, clean, it->second.points, totalScore, "Word found!"};
 }
 
 std::map<int, std::pair<int, int>> Game::getWordCountsByLength() const {
@@ -146,4 +146,3 @@ bool Game::isWordFound(const std::string& word) const {
     auto it = wordMap.find(clean);
     return (it != wordMap.end() && it->second.isFound);
 }
-

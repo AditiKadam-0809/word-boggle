@@ -20,9 +20,9 @@ struct WordInfo {
 
 // Result of word submission check
 enum class SubmitStatus {
-    VALID,          // Valid word found for the first time
-    DUPLICATE,      // Already discovered by player
-    INVALID         // Not in the precomputed board words or invalid
+    WORD_VALID,          // Valid word found for the first time
+    WORD_DUPLICATE,      // Already discovered by player
+    WORD_INVALID         // Not in the precomputed board words or invalid
 };
 
 // Return payload for submit word check
@@ -85,4 +85,3 @@ public:
 };
 
 #endif // GAME_H
-

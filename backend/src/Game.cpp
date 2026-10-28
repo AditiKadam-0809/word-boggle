@@ -146,3 +146,4 @@ bool Game::isWordFound(const std::string& word) const {
     auto it = wordMap.find(clean);
     return (it != wordMap.end() && it->second.isFound);
 }
+

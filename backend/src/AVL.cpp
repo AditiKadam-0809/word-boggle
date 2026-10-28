@@ -160,3 +160,4 @@ void AVLTree::clear() {
     root = nullptr;
     nodeCount = 0;
 }
+

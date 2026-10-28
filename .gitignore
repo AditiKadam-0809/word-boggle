@@ -6,11 +6,13 @@
 *.dll
 *.so
 
-# Build directories
+# Build and IDE configuration
 build/
 bin/
 .vscode/
 .idea/
+.clangd
+compile_commands.json
 
 # OS generated
 .DS_Store

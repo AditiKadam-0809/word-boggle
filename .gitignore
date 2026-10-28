@@ -14,6 +14,10 @@ bin/
 .clangd
 compile_commands.json
 
+# Local tests
+backend/tests/
+tests/
+
 # OS generated
 .DS_Store
 Thumbs.db

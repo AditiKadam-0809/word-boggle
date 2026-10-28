@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Boggle - Advanced Data Structures</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="logo">
+      <span class="logo-icon">&#127922;</span>
+      <h1>WORD BOGGLE</h1>
+    </div>
+    <div class="server-badge" id="server-status">Checking server...</div>
+  </header>
+
+  <main class="main-container">
+
+    <!-- ============================================== -->
+    <!-- SCREEN 1: SETUP SCREEN (Person B)              -->
+    <!-- ============================================== -->
+    <section id="screen-setup" class="screen">
+      <div class="card setup-card">
+        <h2>Start a New Game</h2>
+        <p class="subtitle">Select your difficulty and board dimensions</p>
+
+        <!-- Difficulty Selection -->
+        <div class="setting-group">
+          <label>Select Difficulty</label>
+          <div class="pill-group" id="difficulty-pills">
+            <button type="button" class="pill" data-diff="easy">
+              <strong>Easy</strong>
+              <span>5 min &bull; ~77 words</span>
+            </button>
+            <button type="button" class="pill active" data-diff="medium">
+              <strong>Medium</strong>
+              <span>4 min &bull; ~70 words</span>
+            </button>
+            <button type="button" class="pill" data-diff="hard">
+              <strong>Hard</strong>
+              <span>3 min &bull; ~55 words</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Board Size Selection -->
+        <div class="setting-group">
+          <label>Select Board Size</label>
+          <div class="pill-group" id="size-pills">
+            <button type="button" class="pill" data-size="3">
+              <strong>3 &times; 3</strong>
+              <span>Small (9 tiles)</span>
+            </button>
+            <button type="button" class="pill active" data-size="4">
+              <strong>4 &times; 4</strong>
+              <span>Classic (16 tiles)</span>
+            </button>
+            <button type="button" class="pill" data-size="5">
+              <strong>5 &times; 5</strong>
+              <span>Big (25 tiles)</span>
+            </button>
+          </div>
+        </div>
+
+        <button type="button" id="btn-start" class="btn btn-primary btn-large">
+          Generate Board &amp; Start &rarr;
+        </button>
+      </div>
+    </section>
+
+    <!-- ============================================== -->
+    <!-- SCREEN 2: GAMEPLAY SCREEN                     -->
+    <!-- ============================================== -->
+    <section id="screen-game" class="screen hide">
+      
+      <!-- HUD Bar (Person B) -->
+      <div class="hud-bar">
+        <div class="hud-item timer-box" id="timer-box">
+          <span class="hud-label">TIME LEFT</span>
+          <span class="hud-value" id="hud-timer">04:00</span>
+        </div>
+
+        <div class="hud-item score-box">
+          <span class="hud-label">SCORE</span>
+          <span class="hud-value" id="hud-score">0</span>
+        </div>
+
+        <div class="hud-item words-box">
+          <span class="hud-label">WORDS FOUND</span>
+          <span class="hud-value" id="hud-words">0 / 0</span>
+        </div>
+
+        <button type="button" id="btn-end-early" class="btn btn-outline btn-small">
+          End Game
+        </button>
+      </div>
+
+      <!-- Progress Rings by Length (Person B) -->
+      <div class="progress-rings-card">
+        <div class="rings-title">Progress by Word Length:</div>
+        <div class="rings-container" id="rings-container">
+          <!-- Dynamically generated rings for 3, 4, 5, 6, 7, 8+ -->
+        </div>
+      </div>
+
+      <!-- Feedback Banner -->
+      <div id="feedback-bar" class="feedback-bar hide"></div>
+
+      <!-- Letter Grid Board (Person A) -->
+      <div class="board-wrapper">
+        <div id="board" class="boggle-grid grid-4"></div>
+      </div>
+
+      <!-- Typing & Submission Bar (Person A) -->
+      <div class="typing-bar">
+        <input type="text" id="word-input" placeholder="Type a word or select adjacent tiles..." autocomplete="off" autocapitalize="characters">
+        <button type="button" id="btn-submit" class="btn btn-primary">Submit</button>
+        <button type="button" id="btn-clear" class="btn btn-secondary">Clear</button>
+      </div>
+
+      <!-- Word discovery chips -->
+      <div class="found-words-preview" id="found-words-chips"></div>
+    </section>
+
+    <!-- ============================================== -->
+    <!-- SCREEN 3: END GAME SCREEN (Person B)           -->
+    <!-- ============================================== -->
+    <section id="screen-end" class="screen hide">
+      <div class="card end-card">
+        <div class="end-header">
+          <h2>Game Over!</h2>
+          <p class="subtitle">Here is your complete Boggle performance summary</p>
+        </div>
+
+        <!-- High-level stats -->
+        <div class="end-stats-grid">
+          <div class="stat-box">
+            <span class="stat-number" id="end-score">0</span>
+            <span class="stat-name">Total Points</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-number" id="end-found-count">0</span>
+            <span class="stat-name">Words Found</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-number" id="end-percent">0%</span>
+            <span class="stat-name">Board Discovered</span>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="end-actions">
+          <button type="button" id="btn-play-again" class="btn btn-primary">
+            &#8634; Play Again
+          </button>
+          <button type="button" id="btn-print" class="btn btn-outline">
+            &#128424; Print Word List
+          </button>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="word-list-section">
+          <div class="list-tabs">
+            <button type="button" class="tab active" data-filter="all">All Words (<span id="count-all">0</span>)</button>
+            <button type="button" class="tab" data-filter="found">Found (<span id="count-found">0</span>)</button>
+            <button type="button" class="tab" data-filter="missed">Missed (<span id="count-missed">0</span>)</button>
+          </div>
+
+          <!-- Alphabetically sorted list powered by AVL in-order traversal -->
+          <div class="words-alphabetical-grid" id="end-word-list"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
+

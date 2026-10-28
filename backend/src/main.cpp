@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <random>
 #include <algorithm>
 #include <cctype>
 #include <winsock2.h>
@@ -12,6 +11,7 @@
 
 #include "../include/Graph.h"
 #include "../include/AVL.h"
+#include "../include/Trie.h"
 #include "../include/Game.h"
 
 // Global game instance
@@ -24,7 +24,6 @@ std::string extractJsonString(const std::string& json, const std::string& key) {
     std::string pattern = "\"" + key + "\"";
     size_t pos = json.find(pattern);
     if (pos == std::string::npos) {
-        // Try without quotes on key
         pattern = key + ":";
         pos = json.find(pattern);
         if (pos == std::string::npos) return "";
@@ -71,29 +70,6 @@ int extractJsonInt(const std::string& json, const std::string& key, int defaultV
         }
     }
     return defaultVal;
-}
-
-// Standard Boggle dice distribution
-std::vector<std::string> generateBoard(int size) {
-    static const std::string dice4x4[16] = {
-        "RIFOBX", "IFEHEY", "DENOWS", "UTOKND",
-        "HMSRAO", "LUPETS", "ACITOA", "YLGKUE",
-        "QBMJOA", "EHISPN", "VETIGN", "BALIYT",
-        "EZAVND", "RALESC", "UWILRG", "PACEMD"
-    };
-
-    static std::mt19937 rng(42);
-    std::vector<std::string> board;
-    int totalCells = size * size;
-
-    for (int i = 0; i < totalCells; ++i) {
-        const std::string& die = dice4x4[i % 16];
-        char ch = die[rng() % die.size()];
-        board.push_back(std::string(1, ch));
-    }
-
-    std::shuffle(board.begin(), board.end(), rng);
-    return board;
 }
 
 // Build counts JSON: {"3": [found, total], "4": [found, total], ...}
@@ -172,18 +148,16 @@ std::string handleRequest(const std::string& method, const std::string& path, co
         if (difficulty.empty()) difficulty = "medium";
 
         g_currentSize = size;
-        g_currentBoard = generateBoard(size);
+        Difficulty diff = Game::parseDifficulty(difficulty);
 
-        std::vector<std::string> validWords = {
-            "cat", "cats", "care", "cars", "cart", "cater", "rate", "rats", "rose",
-            "star", "stare", "start", "seat", "sate", "east", "eats", "eater", "rest",
-            "team", "time", "tine", "site", "side", "line", "lion", "pine", "send",
-            "sand", "band", "bland", "blend", "bend", "bone", "cone", "tone", "note",
-            "boat", "coat", "goat", "float", "flat", "plat", "plot", "slot", "spot",
-            "stop", "post", "host", "most", "cost", "lost", "frost", "forest", "boggling"
-        };
+        // Generate dynamic dice board and solve with Trie-pruned DFS
+        g_game.startNewGame(g_currentSize, diff);
 
-        g_game.setValidWords(validWords);
+        const auto& letters = g_game.getBoard();
+        g_currentBoard.clear();
+        for (char ch : letters) {
+            g_currentBoard.push_back(std::string(1, ch));
+        }
 
         std::ostringstream boardJson;
         boardJson << "[";
@@ -199,7 +173,7 @@ std::string handleRequest(const std::string& method, const std::string& path, co
         resp << "{"
              << "\"board\":" << boardJson.str() << ","
              << "\"size\":" << g_currentSize << ","
-             << "\"difficulty\":\"" << difficulty << "\","
+             << "\"difficulty\":\"" << Game::difficultyToString(diff) << "\","
              << "\"counts\":" << countsJson << ","
              << "\"totalWords\":" << g_game.getTotalCount()
              << "}";
@@ -221,6 +195,14 @@ std::string handleRequest(const std::string& method, const std::string& path, co
 
         std::string countsJson = buildCountsJson(g_game.getWordCountsByLength());
 
+        std::ostringstream pathJson;
+        pathJson << "[";
+        for (size_t i = 0; i < res.path.size(); ++i) {
+            if (i > 0) pathJson << ",";
+            pathJson << res.path[i];
+        }
+        pathJson << "]";
+
         std::ostringstream resp;
         resp << "{"
              << "\"status\":\"" << statusStr << "\","
@@ -229,13 +211,27 @@ std::string handleRequest(const std::string& method, const std::string& path, co
              << "\"totalScore\":" << res.totalScore << ","
              << "\"foundCount\":" << g_game.getFoundCount() << ","
              << "\"counts\":" << countsJson << ","
+             << "\"path\":" << pathJson.str() << ","
              << "\"message\":\"" << res.message << "\""
              << "}";
 
         return createHttpResponse(200, "application/json", resp.str());
     }
 
-    // Endpoint 4: GET /api/end
+    // Endpoint 4: GET /api/state
+    if (path == "/api/state" && method == "GET") {
+        std::string countsJson = buildCountsJson(g_game.getWordCountsByLength());
+        std::ostringstream resp;
+        resp << "{"
+             << "\"score\":" << g_game.getTotalScore() << ","
+             << "\"foundCount\":" << g_game.getFoundCount() << ","
+             << "\"totalCount\":" << g_game.getTotalCount() << ","
+             << "\"counts\":" << countsJson
+             << "}";
+        return createHttpResponse(200, "application/json", resp.str());
+    }
+
+    // Endpoint 5: GET /api/end
     if (path == "/api/end" && method == "GET") {
         std::vector<EndGameWord> words = g_game.getEndGameSortedWordList();
 
@@ -275,6 +271,13 @@ int main() {
     std::cout << "========================================" << std::endl;
     std::cout << "     WORD BOGGLE C++ BACKEND SERVER     " << std::endl;
     std::cout << "========================================" << std::endl;
+
+    std::cout << "[Server] Loading dictionary from data/words.txt..." << std::endl;
+    if (!g_game.loadDictionary("data/words.txt")) {
+        g_game.loadDictionary("../data/words.txt");
+    }
+    std::cout << "[Server] Loaded " << g_game.getDictionary().getWordCount()
+              << " dictionary words into Trie." << std::endl;
 
     WSADATA wsaData;
     int wsaRes = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -317,6 +320,7 @@ int main() {
     std::cout << "  - GET  /api/ping" << std::endl;
     std::cout << "  - POST /api/new" << std::endl;
     std::cout << "  - POST /api/submit" << std::endl;
+    std::cout << "  - GET  /api/state" << std::endl;
     std::cout << "  - GET  /api/end" << std::endl;
     std::cout << "  - GET  / (Frontend static files)" << std::endl;
     std::cout << "========================================" << std::endl;
@@ -345,7 +349,6 @@ int main() {
                 body = rawRequest.substr(headerEnd + 4);
             }
 
-            // Read remaining body if Content-Length specified
             size_t clPos = rawRequest.find("Content-Length:");
             if (clPos == std::string::npos) clPos = rawRequest.find("content-length:");
             if (clPos != std::string::npos) {

@@ -1,6 +1,6 @@
 #include <iostream>
 #include <cassert>
-#include "Graph.h"
+#include "../include/Graph.h"
 
 void test3x3() {
     std::cout << "[Test] 3x3 Board Graph..." << std::endl;

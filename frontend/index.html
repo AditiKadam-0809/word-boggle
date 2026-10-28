@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Boggle</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app-container">
+
+        <!-- ================= PERSON B: Setup Screen ================= -->
+        <section id="screen-setup" class="screen">
+            <div class="setup-card">
+                <h1 class="game-logo">WORD <span>BOGGLE</span></h1>
+                <p class="subtitle">Advanced Data Structures Project</p>
+
+                <!-- Person B will wire options and start button -->
+                <div class="setup-controls">
+                    <div class="control-group">
+                        <label for="select-size">Board Dimension</label>
+                        <select id="select-size">
+                            <option value="3">3 x 3 (Quick)</option>
+                            <option value="4" selected>4 x 4 (Classic Boggle)</option>
+                            <option value="5">5 x 5 (Big Boggle)</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="select-difficulty">Difficulty Tier</label>
+                        <select id="select-difficulty">
+                            <option value="easy">Easy</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="hard">Hard</option>
+                            <option value="extreme">Extreme</option>
+                        </select>
+                    </div>
+
+                    <button id="btn-start-game" class="btn btn-primary">Start Game</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= GAME SCREEN (PERSON A & B) ================= -->
+        <section id="screen-game" class="screen active">
+
+            <!-- PERSON B: HUD Bar (Timer, Score, Progress Rings) -->
+            <header id="hud-bar">
+                <div class="hud-item hud-timer">
+                    <span class="hud-label">TIME</span>
+                    <span id="timer-display" class="hud-value">03:00</span>
+                </div>
+                <div class="hud-item hud-score">
+                    <span class="hud-label">SCORE</span>
+                    <span id="score-display" class="hud-value">0</span>
+                </div>
+                <div class="hud-item hud-found">
+                    <span class="hud-label">FOUND</span>
+                    <span id="found-count-display" class="hud-value">0</span>
+                </div>
+                <div class="hud-actions">
+                    <button id="btn-end-early" class="btn btn-secondary">End Game</button>
+                </div>
+            </header>
+
+            <!-- Progress rings container (Person B) -->
+            <div id="progress-rings-container">
+                <!-- Person B populates word length progress circles -->
+            </div>
+
+            <main class="game-centerpiece">
+                <!-- PERSON A: Board Letter Grid Tiles -->
+                <div id="board-wrapper">
+                    <div id="board" class="board-grid" data-size="4">
+                        <!-- Person A dynamically generates .tile elements here -->
+                    </div>
+                </div>
+
+                <!-- PERSON A: Typing Box & Submit Controls -->
+                <div id="typing-box-container">
+                    <div id="typing-box">
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="word-input" 
+                                placeholder="Type or drag word..." 
+                                autocomplete="off" 
+                                spellcheck="false"
+                                maxlength="25"
+                            />
+                            <button id="btn-clear-path" class="icon-btn" title="Clear path (Esc)">✕</button>
+                        </div>
+                        <button id="btn-submit-word" class="btn btn-submit">Submit Word</button>
+                    </div>
+                    <div id="submission-feedback" class="feedback-msg"></div>
+                </div>
+            </main>
+
+            <!-- Found words list drawer (Person B) -->
+            <aside id="found-words-drawer">
+                <h3>Words Found (<span id="drawer-found-count">0</span>)</h3>
+                <div id="found-words-chips"></div>
+            </aside>
+        </section>
+
+        <!-- ================= PERSON B: End Game Screen ================= -->
+        <section id="screen-end" class="screen">
+            <div class="end-card">
+                <h2>Game Over!</h2>
+                <div id="final-stats"></div>
+                <div id="end-words-breakdown">
+                    <!-- Person B populates sorted words via AVL traversal -->
+                </div>
+                <div class="end-actions">
+                    <button id="btn-play-again" class="btn btn-primary">Play Again</button>
+                    <button id="btn-print-results" class="btn btn-secondary">Print Results</button>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+

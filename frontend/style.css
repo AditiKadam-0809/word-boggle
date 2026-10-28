@@ -1,0 +1,462 @@
+/* ==========================================================================
+   GLOBAL THEME & RESETS
+   ========================================================================== */
+:root {
+    --bg-dark: #0f172a;
+    --card-bg: #1e293b;
+    --surface-hover: #334155;
+    --text-primary: #f8fafc;
+    --text-muted: #94a3b8;
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --tile-bg: #f8fafc;
+    --tile-text: #0f172a;
+    --tile-selected: #fef08a;
+    --tile-border: #cbd5e1;
+    --tile-shadow: 0 6px 0 #94a3b8, 0 10px 15px rgba(0,0,0,0.3);
+    --tile-shadow-active: 0 2px 0 #ca8a04, 0 4px 6px rgba(0,0,0,0.2);
+    --grid-size: 4;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+}
+
+body {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow-x: hidden;
+}
+
+#app-container {
+    width: 100%;
+    max-width: 960px;
+    min-height: 90vh;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.screen {
+    display: none;
+    width: 100%;
+    animation: fadeIn 0.3s ease forwards;
+}
+
+.screen.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Common Buttons */
+.btn {
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+.btn-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+}
+.btn-secondary:hover {
+    background: #475569;
+}
+
+/* ==========================================================================
+   PERSON B: STYLES (HUD, Progress Rings, Setup, End Screen)
+   ========================================================================== */
+#hud-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+}
+
+.hud-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.hud-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+.hud-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Progress Rings Container placeholder (Person B) */
+#progress-rings-container {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+/* Setup & End Screen placeholders (Person B) */
+.setup-card, .end-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 2.5rem;
+    text-align: center;
+    max-width: 500px;
+    margin: 3rem auto;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+}
+
+.game-logo {
+    font-size: 2.5rem;
+    font-weight: 800;
+}
+.game-logo span {
+    color: var(--primary);
+}
+
+.control-group {
+    margin: 1.25rem 0;
+    text-align: left;
+}
+.control-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+}
+.control-group select {
+    width: 100%;
+    padding: 0.65rem;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: white;
+    font-size: 1rem;
+}
+
+#found-words-drawer {
+    margin-top: 1.5rem;
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1rem;
+}
+#found-words-drawer h3 {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+#found-words-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+/* ==========================================================================
+   PERSON A: GAME SCREEN STYLES (Board, 3D Dice Tiles, Dragging, Typing Box)
+   ========================================================================== */
+.game-centerpiece {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+/* Board Outer Wrapper */
+#board-wrapper {
+    background: #1e293b;
+    border-radius: 20px;
+    padding: 1.25rem;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4), 0 12px 30px rgba(0, 0, 0, 0.3);
+    border: 2px solid #334155;
+    position: relative;
+    touch-action: none; /* Prevents scroll while dragging on touch */
+}
+
+/* Grid Container */
+#board.board-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-size, 4), 1fr);
+    gap: 0.75rem;
+    width: fit-content;
+    margin: 0 auto;
+}
+
+/* 3D Tactile Dice Letter Tiles (Person A) */
+.tile {
+    width: 72px;
+    height: 72px;
+    background: var(--tile-bg);
+    color: var(--tile-text);
+    border-radius: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2.1rem;
+    font-weight: 800;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    box-shadow: var(--tile-shadow);
+    border: 2px solid var(--tile-border);
+    transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                box-shadow 0.12s ease, 
+                background-color 0.15s ease,
+                border-color 0.15s ease;
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Dynamic Tile Sizing for 5x5 boards */
+#board[data-size="5"] .tile {
+    width: 60px;
+    height: 60px;
+    font-size: 1.75rem;
+    border-radius: 12px;
+}
+
+/* Dynamic Tile Sizing for 3x3 boards */
+#board[data-size="3"] .tile {
+    width: 84px;
+    height: 84px;
+    font-size: 2.4rem;
+}
+
+/* 3D Tile Hover State */
+.tile:hover:not(.selected) {
+    transform: translateY(-3px);
+    box-shadow: 0 9px 0 #94a3b8, 0 14px 20px rgba(0,0,0,0.35);
+    background: #ffffff;
+}
+
+/* Active / Pressed Tile */
+.tile:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #94a3b8, 0 4px 6px rgba(0,0,0,0.2);
+}
+
+/* Path Selection State (Person A: Dragging & Clicked) */
+.tile.selected {
+    background: #fde047; /* Bright warm gold */
+    color: #713f12;
+    border-color: #eab308;
+    transform: translateY(4px);
+    box-shadow: var(--tile-shadow-active);
+    z-index: 2;
+}
+
+/* Last tile in active path has extra pulse indicator */
+.tile.selected.path-head {
+    background: #facc15;
+    border-color: #ca8a04;
+    outline: 3px solid rgba(234, 179, 8, 0.4);
+}
+
+/* Path Sequence Badge (1, 2, 3...) */
+.tile .path-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #ea580c;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 800;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    animation: popBadge 0.15s ease-out;
+}
+
+@keyframes popBadge {
+    0% { transform: scale(0); }
+    80% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* Server Path Highlight / Word Reveal Glow (Person A) */
+.tile.highlight-path {
+    background: #a7f3d0 !important; /* Soft Emerald */
+    color: #065f46 !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.7) !important;
+    transform: translateY(-2px);
+    transition: all 0.25s ease;
+}
+
+/* Flash Animations */
+@keyframes successFlash {
+    0%, 100% { background: #fde047; }
+    50% { background: #86efac; border-color: #22c55e; }
+}
+.tile.flash-success {
+    animation: successFlash 0.4s ease 2;
+}
+
+/* ==========================================================================
+   PERSON A: TYPING BOX & SUBMISSION CONTROLS
+   ========================================================================== */
+#typing-box-container {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#typing-box {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.input-wrapper {
+    position: relative;
+    flex: 1;
+}
+
+#word-input {
+    width: 100%;
+    padding: 0.85rem 2.5rem 0.85rem 1.1rem;
+    border-radius: 10px;
+    border: 2px solid #334155;
+    background: #1e293b;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+#word-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    background: #0f172a;
+}
+
+.icon-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.15s ease;
+}
+.icon-btn:hover {
+    color: var(--text-primary);
+    background: #334155;
+}
+
+.btn-submit {
+    background: var(--success);
+    color: #ffffff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    padding: 0.85rem 1.6rem;
+    border-radius: 10px;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-submit:hover {
+    background: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.btn-submit:active {
+    transform: translateY(1px);
+}
+
+/* Submission Feedback Message */
+.feedback-msg {
+    min-height: 24px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.feedback-msg.show {
+    opacity: 1;
+}
+
+.feedback-msg.success {
+    color: #34d399;
+}
+
+.feedback-msg.warning {
+    color: #fbbf24;
+}
+
+.feedback-msg.error {
+    color: #f87171;
+}
+
+/* Shake Animation for invalid / duplicate words */
+@keyframes shakeInput {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+}
+
+.shake {
+    animation: shakeInput 0.35s ease;
+}
+

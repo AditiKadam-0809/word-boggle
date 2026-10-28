@@ -330,15 +330,31 @@ window.addEventListener('pointerup', () => {
 });
 
 function updatePathHighlights() {
-  const tiles = $('board').querySelectorAll('.tile');
+  const tiles = $("board").querySelectorAll(".tile");
   tiles.forEach(t => {
     const idx = parseInt(t.dataset.index, 10);
-    if (state.currentPath.includes(idx)) {
-      t.classList.add('selected');
+    const pos = state.currentPath.indexOf(idx);
+    const existingBadge = t.querySelector(".path-step-badge");
+    if (existingBadge) existingBadge.remove();
+
+    if (pos !== -1) {
+      t.classList.add("selected");
+      const badge = document.createElement("span");
+      badge.className = "path-step-badge";
+      badge.textContent = pos + 1;
+      t.appendChild(badge);
     } else {
-      t.classList.remove('selected', 'path-active');
+      t.classList.remove("selected", "path-active");
     }
   });
+}
+
+function shakeInput() {
+  const inp = $("word-input");
+  if (!inp) return;
+  inp.classList.remove("shake");
+  void inp.offsetWidth;
+  inp.classList.add("shake");
 }
 
 function clearSelection() {
@@ -422,9 +438,11 @@ async function submitWord(word) {
       }
 
     } else if (data.status === 'DUPLICATE') {
-      showFeedback(`Already found "${data.word.toUpperCase()}"`, 'duplicate');
+      showFeedback("Already found "${data.word.toUpperCase()}"", 'duplicate');
+      shakeInput();
     } else {
-      showFeedback(`"${data.word.toUpperCase()}" is not on this board`, 'invalid');
+      showFeedback("${data.word.toUpperCase()}" is not on this board", 'invalid');
+      shakeInput();
     }
 
     $('word-input').value = '';
@@ -562,4 +580,5 @@ function switchScreen(screenId) {
     }
   });
 }
+
 
